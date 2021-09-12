@@ -106,6 +106,15 @@ def cb_uav(data):
 rospy.init_node('sw_plan_node', anonymous=True)
 
 
+def land():
+    for i in land_pub_list:
+        i.publish(Empty())
+
+
+Tello_list=[1,2]
+land_pub_list = [rospy.Publisher("drone"+str(i)+'/tello/land', Empty, queue_size=1) for i in Tello_list]
+
+
 pr5152=a_plan_res("51_52_future")
 pr5152.in_num_obj=[board_set[1],board_set[2]]
 pr5152.in_num=[51,52]
@@ -123,9 +132,9 @@ p5152_pub=rospy.Publisher('ref_bef', Twist, queue_size=1)
 #  51   =010(2)=2(10)
 is51or52_pub=rospy.Publisher('is51or52_pub', Twist, queue_size=1)
 uav_sub=rospy.Subscriber('from_kf', Twist, cb_uav)
-land_pub = rospy.Publisher('tello/land', Empty, queue_size=1)
+# land_pub = rospy.Publisher('tello/land', Empty, queue_size=1)
 
-takeoff_sub = rospy.Subscriber('tello/takeoff', Empty, cb_takeoff)
+takeoff_sub = rospy.Subscriber('/drone1/tello/takeoff', Empty, cb_takeoff)
 Ts=0.03
 rate = rospy.Rate(1/Ts)
 m=0
@@ -218,7 +227,7 @@ while not rospy.is_shutdown():
                     p5152_pub.publish(pr52.get_output_msg())
         
         if m==100:
-            land_pub.publish(Empty())
+            land()
             m=101
     # print(t)
     rate.sleep()

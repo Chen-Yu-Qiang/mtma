@@ -110,6 +110,7 @@ class board_data:
         self.target_filter=filter_lib.meanFilter(3)
         if self.ArucoID>=50:
             self.pub=rospy.Publisher('target'+str(self.ArucoID), Twist, queue_size=1)
+            self.glo_pub=rospy.Publisher('/target'+str(self.ArucoID), Twist, queue_size=1)
 
     def for_positioning(self):
         box_pub_r_msg=self.r.getXYZ_h(276)
@@ -133,6 +134,7 @@ class board_data:
         box_pub_b_target.publish(Rz(box_pub_b_msg_target))
         target_pub.publish(getInvXYZ(Rz(box_pub_r_msg_target),self.img_ang,kf_data))
         self.pub.publish(getInvXYZ(Rz(box_pub_r_msg_target),self.img_ang,kf_data))
+        self.glo_pub.publish(getInvXYZ(Rz(box_pub_r_msg_target),self.img_ang,kf_data))
 
     def isTimsOut(self):
         if self.g.isTimeOut() or self.r.isTimeOut():
@@ -213,7 +215,7 @@ def cb_box(data):
 
 # from_img_ang=0
 
-board_set=[board_data(i) for i in range(60)]
+board_set=[board_data(i) for i in range(53)]
 
 
 

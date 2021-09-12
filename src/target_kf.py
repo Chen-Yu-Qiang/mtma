@@ -13,7 +13,7 @@ dt=1.0/30.0
 
 class target:
     def __init__(self,_i):
-        self.sub = rospy.Subscriber('target'+str(_i), Twist, self.cb_fun)
+        self.sub = rospy.Subscriber('/target'+str(_i), Twist, self.cb_fun)
         self.i=_i
         self.data=None
         self.future=Twist()
@@ -104,7 +104,7 @@ class target:
             return 1
 
 rospy.init_node('target_kf_node', anonymous=True)
-target_set=[target(i) for i in range(51,60)]
+target_set=[target(i) for i in range(51,53)]
 rate = rospy.Rate(1.0/dt)
 
 

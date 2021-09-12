@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch> 
     <param name="isSIM" value="0"/>
-    <node pkg="mtma" type="republish" name="republish" output="screen" args="h264 in:=/tello/image_raw raw out:=/tello_raw"/>
+    <node pkg="image_transport" type="republish" name="republish" output="screen" args="h264 in:=/tello/image_raw raw out:=/tello_raw"/>
     <node pkg="mtma" type="findBoxWCannyOnLine.py" name="findBoxOnLine" output="screen"/>
     <node pkg="mtma" type="control_val_node_kf.py" name="control_val_node_kf" output="screen"/>
     <node pkg="mtma" type="kf.py" name="kf" output="screen"/>

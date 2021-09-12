@@ -53,7 +53,7 @@ b=None
 class image_converter:
     def __init__(self):
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/tello_raw",Image,self.callback)
+        self.image_sub = rospy.Subscriber("tello_raw",Image,self.callback)
         self.bgimg = cv2.imread("bg.png")
         self.isdoing=0
         self.ttt=time.time()
