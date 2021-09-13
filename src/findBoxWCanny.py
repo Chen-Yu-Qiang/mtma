@@ -264,7 +264,7 @@ def findCanny(img,color):
             c_max=c
     if A_max==0:
         print("no max area",color)
-        return simp
+        return 
     #print(c_max)
     # cv2.drawContours(image,c_max,-1,(0,0,255),2) 
     # cv2.imshow('mavimage'+color, image)
@@ -281,7 +281,7 @@ def findCanny(img,color):
         # print("len(approx1)=",len(approx1),color)
         # print(approx1)
         if len(approx1)<4:
-            return simp
+            return 
         else:
             approx1=findnear(approx1)
             # print(approx1)

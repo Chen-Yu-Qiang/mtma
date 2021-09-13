@@ -39,23 +39,23 @@ while not rospy.is_shutdown():
     if is_takeoff:
         print(t)
         if m==0:
-            if t>=15:
+            if t>=20:
                 m=1
                 t=float(0)
             else:
                 t=t+Ts
 
                 d1_ref_msg=Twist()
-                d1_ref_msg.linear.x = 1.5
+                d1_ref_msg.linear.x = 2
                 d1_ref_msg.linear.y = -0.3
-                d1_ref_msg.linear.z = 1.5
+                d1_ref_msg.linear.z = 1.2
                 d1_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[0].publish(d1_ref_msg)
 
                 d2_ref_msg=Twist()
-                d2_ref_msg.linear.x = 1.5
+                d2_ref_msg.linear.x = 2
                 d2_ref_msg.linear.y = 0.3
-                d2_ref_msg.linear.z = 1.5
+                d2_ref_msg.linear.z = 1.2
                 d2_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==1:
@@ -65,16 +65,16 @@ while not rospy.is_shutdown():
             else:
                 t=t+Ts
                 d1_ref_msg=Twist()
-                d1_ref_msg.linear.x = 1.5+t/10.0
+                d1_ref_msg.linear.x = 2+t/10.0
                 d1_ref_msg.linear.y = -0.3+t/25.0
-                d1_ref_msg.linear.z = 1.5
+                d1_ref_msg.linear.z = 1.2
                 d1_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[0].publish(d1_ref_msg)
 
                 d2_ref_msg=Twist()
-                d2_ref_msg.linear.x = 1.5
+                d2_ref_msg.linear.x = 2
                 d2_ref_msg.linear.y = 0.3
-                d2_ref_msg.linear.z = 1.5
+                d2_ref_msg.linear.z = 1.2
                 d2_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==2:
@@ -84,16 +84,16 @@ while not rospy.is_shutdown():
             else:
                 t=t+Ts
                 d1_ref_msg=Twist()
-                d1_ref_msg.linear.x = 3
+                d1_ref_msg.linear.x = 3.5
                 d1_ref_msg.linear.y = 0.3
-                d1_ref_msg.linear.z = 1.5
+                d1_ref_msg.linear.z = 1.2
                 d1_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[0].publish(d1_ref_msg)
 
                 d2_ref_msg=Twist()
-                d2_ref_msg.linear.x = 1.5+t/10.0
+                d2_ref_msg.linear.x = 2+t/10.0
                 d2_ref_msg.linear.y = 0.3-t/25.0
-                d2_ref_msg.linear.z = 1.5
+                d2_ref_msg.linear.z = 1.2
                 d2_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==3:
@@ -103,16 +103,16 @@ while not rospy.is_shutdown():
             else:
                 t=t+Ts
                 d1_ref_msg=Twist()
-                d1_ref_msg.linear.x = 3
+                d1_ref_msg.linear.x = 3.5
                 d1_ref_msg.linear.y = 0.3
-                d1_ref_msg.linear.z = 1.5
+                d1_ref_msg.linear.z = 1.2
                 d1_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[0].publish(d1_ref_msg)
 
                 d2_ref_msg=Twist()
-                d2_ref_msg.linear.x = 3
+                d2_ref_msg.linear.x = 3.5
                 d2_ref_msg.linear.y = -0.3
-                d2_ref_msg.linear.z = 1.5
+                d2_ref_msg.linear.z = 1.2
                 d2_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[1].publish(d2_ref_msg)
 
