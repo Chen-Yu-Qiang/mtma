@@ -60,6 +60,7 @@ class image_converter:
         self.pool=ThreadPool()
         # self.pool=mp.Pool()
         self.together_show=None
+        self.namespace=rospy.get_namespace()
 
     def callback(self,data):
         if time.time()-self.ttt<0.01:
@@ -200,7 +201,8 @@ class image_converter:
         imgAndState = cv2.putText(imgAndState,str(y_d),(1130,475),cv2.FONT_HERSHEY_SIMPLEX,1, (0,0,0), 1, cv2.LINE_AA)
         imgAndState = cv2.putText(imgAndState,str(z_d),(1130,515),cv2.FONT_HERSHEY_SIMPLEX,1, (0,0,0), 1, cv2.LINE_AA)
         imgAndState = cv2.putText(imgAndState,str(ang_d*57.296),(1130,555),cv2.FONT_HERSHEY_SIMPLEX,1, (0,0,0), 1, cv2.LINE_AA)
-        cv2.imshow('addbox', imgAndState)
+        imgAndState_resize=cv2.resize(imgAndState, (661,360), interpolation=cv2.INTER_NEAREST)
+        cv2.imshow('control '+self.namespace, imgAndState_resize)
         cv2.waitKey(1)
         self.isdoing=0
         self.ttt=time.time()
