@@ -4,12 +4,12 @@ import time
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Twist
 ALPHA_H=0.6119
-ALPHA_H=0.5
+# ALPHA_H=0.5
 ALPHA_V=0.4845
 Z_T=1.5
 Z_B=5
 THETA_A=np.pi/6
-RHO=0.9
+RHO=0.2
 
 
 def cameraFrame2WorldFrame(cpk,ci):
@@ -193,8 +193,8 @@ def twist2taskpoint(twist_list):
 
     return taskPoint
 
-def twist2ci(twist):
-    return [twist_list.linear.x,twist_list.linear.y,twist_list.linear.z,twist_list.angular.z]
+def twist2ci(_twist):
+    return [_twist.linear.x,_twist.linear.y,_twist.linear.z,_twist.angular.z]
 
 def ci2twist(ci):
     a=Twist()
@@ -208,11 +208,16 @@ def ci2twist(ci):
 class viewPanner:
     def __init__(self):
         self.taskPoint=[]
-        self.ci=[1.5,0,0,np.pi]
+        self.ci=[1.5,0,0,np.pi*0.5]
+        self.ci_last=[1.5,0,0,np.pi*0.5]
         self.it_length=1
         self.g_time=5
+        self.occ=[]
+        self.myName=""
     def set_taskPoint(self,_taskPoint):
         self.taskPoint=_taskPoint
+    def set_occ(self,_occ):
+        self.occ=_occ
     
     def isTooBig(self):
         d_all=0
@@ -221,36 +226,110 @@ class viewPanner:
         if d_all>1.2:
             return 1
         return 0
+
+    def F_rep_one(self,pos,occ_pos):
+        d=0.0
+        d=d+(pos[0]-occ_pos[0])**2
+        d=d+(pos[1]-occ_pos[1])**2
+        d=d+((pos[2]-occ_pos[2]))**2
+        d=np.sqrt(d)
+        # print(pos,occ_pos)
+        R=1.0
+        if d>R:
+            # print(d)
+            return [0.0,0.0,0.0,0.0]
+        gain=0.3*(1.0/d-1/R)/d/d
+        ret=[0.0,0.0,0.0,0.0]
+        ret[0]=(pos[0]-occ_pos[0])*gain
+        ret[1]=(pos[1]-occ_pos[1])*gain
+        ret[2]=(pos[2]-occ_pos[2])*gain
+        # print(ret[2],pos[2],occ_pos[2])
+        return ret
+
+    def F_rep_all(self):
+        F=[0.0,0.0,0.0,0.0]
+        for i in self.occ:
+            ff=self.F_rep_one(self.ci,i)
+            F[0]=F[0]+ff[0]
+            F[1]=F[1]+ff[1]
+            F[2]=F[2]+ff[2]
+        # print(self.myName,F)
+        return F
+
+
     def one_it(self):
         delta_ci=mut_point(self.ci,self.taskPoint)
+        delta_F=self.F_rep_all()
         # print(delta_ci)
-        self.ci[0]=self.ci[0]+self.it_length*delta_ci[0]
-        self.ci[1]=self.ci[1]+self.it_length*delta_ci[1]
-        self.ci[2]=self.ci[2]+self.it_length*delta_ci[2]
+        self.ci[0]=self.ci[0]+self.it_length*(delta_ci[0]+delta_F[0])
+        self.ci[1]=self.ci[1]+self.it_length*(delta_ci[1]+delta_F[1])
+        self.ci[2]=self.ci[2]+self.it_length*(delta_ci[2]+delta_F[2])
         self.ci[3]=self.ci[3]+self.it_length*0.1*delta_ci[3]
         return self.ci
-    def gant(self,times=50,dec=0.98):
+    def gant(self,times=100,dec=0.9):
         self.it_length=1
         if self.g_time>0:
             for i in range(times*5):
                 self.one_it()
+                self.it_length=self.it_length*dec
             self.g_time=self.g_time-1
             # print(self.g_time)
         else:
             for i in range(times):
                 self.one_it()
                 self.it_length=self.it_length*dec
-
+        
+        
+        # print(self.myName,self.ci_last[0]-self.ci[0],self.ci_last[1]-self.ci[1],self.ci_last[2]-self.ci[2],self.ci_last[3]-self.ci[3])
+        self.ci_last[0]=self.ci[0]
+        self.ci_last[1]=self.ci[1]
+        self.ci_last[2]=self.ci[2]
+        self.ci_last[3]=self.ci[3]
         return self.ci
 
     def get_tpk(self):
         tpk_list=[0 for i in range(len(self.taskPoint)*4)]
         for i in range(len(self.taskPoint)):
             cpk=worldFrame2CameraFrame(self.taskPoint[i],self.ci)
-            tpk_list[i*4:i*5]=ciSpace2tiSpace(cpk)
+            tpk_list[i*4:i*4+4]=ciSpace2tiSpace(cpk)
             
         return tpk_list
 
+
+def board_Expand(board_list):
+    new_board_list=[[0.0,0.0,0.0,0.0] for i in range(len(board_list)*4)]
+    for i in range(len(board_list)):
+        p0=board_list[i]
+
+        p1=[0.0,0.0,0.0,0.0]
+        p1[0]=p0[0]+0.15*np.cos(p0[3])
+        p1[1]=p0[1]+0.15*np.sin(p0[3])
+        p1[2]=p0[2]-0.15
+        p1[3]=p0[3]
+
+        p2=[0.0,0.0,0.0,0.0]
+        p2[0]=p0[0]-0.45*np.cos(p0[3])
+        p2[1]=p0[1]-0.45*np.sin(p0[3])
+        p2[2]=p0[2]+0.55
+        p2[3]=p0[3]
+
+        p3=[0.0,0.0,0.0,0.0]
+        p3[0]=p0[0]+0.15*np.cos(p0[3])
+        p3[1]=p0[1]+0.15*np.sin(p0[3])
+        p3[2]=p0[2]+0.55
+        p3[3]=p0[3]
+
+        p4=[0.0,0.0,0.0,0.0]
+        p4[0]=p0[0]-0.45*np.cos(p0[3])
+        p4[1]=p0[1]-0.45*np.sin(p0[3])
+        p4[2]=p0[2]-0.15
+        p4[3]=p0[3]
+
+        new_board_list[i*4]=p1
+        new_board_list[i*4+1]=p2
+        new_board_list[i*4+2]=p3
+        new_board_list[i*4+3]=p4
+    return new_board_list
 
 
 def v_y(x,y,th,l=-0.5):
@@ -343,7 +422,10 @@ if __name__ == '__main__':
     taskPoint[0]=[1.0,0.5,0.9,np.pi/2]
     taskPoint[1]=[1.0,0.5,0.9,np.pi/2]
     plot_contourf(taskPoint)
+    
 
+    print(taskPoint)
+    print(board_Expand(taskPoint))
     # for i in range(len(taskPoint)):
     #     plt.scatter(targetSet[i].linear.x,targetSet[i].linear.y,color=board_color[i])
     #     [x,xx],[y,yy]=v_y(targetSet[i].linear.x,targetSet[i].linear.y,targetSet[i].angular.z)

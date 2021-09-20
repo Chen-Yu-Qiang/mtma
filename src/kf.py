@@ -97,9 +97,14 @@ def cb_ang_imu(data):
 
 
 dt=1.0/30
+rospy.init_node('kf', anonymous=True)
+x0=rospy.get_param('x0',2)
+y0=rospy.get_param('y0',0)
+z0=rospy.get_param('z0',0)
+th0=rospy.get_param('th0',np.pi/2)
 
 kf_x=kf_lib.KalmanFilter(3)
-kf_x.constantSpeedWDrift(dt,1.5,0,0,0.01,0.01,0.000001)
+kf_x.constantSpeedWDrift(dt,x0,0,0,0.01,0.01,0.000001)
 measure_x_p=kf_lib.KF_updater(1,kf_x)
 measure_x_p.constantSpeedWDrift_Position(1)
 measure_x_v=kf_lib.KF_updater(1,kf_x)
@@ -108,7 +113,7 @@ measure_x_v_2=kf_lib.KF_updater(1,kf_x)
 measure_x_v_2.constantSpeedWDrift_Speed(0.5)
 
 kf_y=kf_lib.KalmanFilter(3)
-kf_y.constantSpeedWDrift(dt,0,0,0,0.01,0.01,0.000001)
+kf_y.constantSpeedWDrift(dt,y0,0,0,0.01,0.01,0.000001)
 measure_y_p=kf_lib.KF_updater(1,kf_y)
 measure_y_p.constantSpeedWDrift_Position(1)
 measure_y_v=kf_lib.KF_updater(1,kf_y)
@@ -118,7 +123,7 @@ measure_y_v_2.constantSpeedWDrift_Speed(0.5)
 
 
 kf_z=kf_lib.KalmanFilter(3)
-kf_z.constantSpeedWDrift(dt,0,0,0,0.01,0.01,0.000001)
+kf_z.constantSpeedWDrift(dt,z0,0,0,0.01,0.01,0.000001)
 measure_z_p=kf_lib.KF_updater(1,kf_z)
 measure_z_p.constantSpeedWDrift_Position(1)
 measure_z_v=kf_lib.KF_updater(1,kf_z)
@@ -132,13 +137,13 @@ measure_th_vp=kf_lib.KF_updater(1,kf_th)
 measure_th_imu=kf_lib.KF_updater(1,kf_th)
 kf_th.Q[0][0]=0.01
 kf_th.Q[1][1]=0.00000001
-kf_th.X[0][0]=np.pi/2
-kf_th.X[1][0]=np.pi/2
+kf_th.X[0][0]=th0
+kf_th.X[1][0]=th0
 measure_th_vp.H=np.array([[1,0]])
 measure_th_imu.H=np.array([[1,-1]])
 
 
-rospy.init_node('kf', anonymous=True)
+
 odom_sub = rospy.Subscriber("tello/odom", Odometry, cb_odom)
 box_sub = rospy.Subscriber('from_box_merge', Twist, cb_box)
 ang_sub = rospy.Subscriber('from_img_ang2', Float32, cb_ang_img)
@@ -157,6 +162,9 @@ kf_ang_pub = rospy.Publisher('kf_ang', Float32 , queue_size=1)
 cal_time_pub = rospy.Publisher('cal_time', Float32 , queue_size=1)
 
 rate = rospy.Rate(1.0/dt)
+
+
+
 while  not rospy.is_shutdown():
     #t=time.time()
 

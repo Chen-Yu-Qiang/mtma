@@ -27,8 +27,9 @@ class a_plan_res:
         self.in_num_obj=None
         self.ang_x=0
     def cb_res(self,data):
-        # print(data)
-        data.linear.z=data.linear.z+0.5
+        # print("cb_res",data)
+
+        data.linear.z=data.linear.z
         self.res=data
 
 
@@ -68,6 +69,7 @@ class a_plan_res:
             else:
                 output_msg=self.in_num_obj[self.which_board_timeout()].last_see_uav_pos
                 output_msg.angular.x=0  
+                print("cc")
 
             return output_msg
 
@@ -115,17 +117,25 @@ Tello_list=[1,2]
 land_pub_list = [rospy.Publisher("drone"+str(i)+'/tello/land', Empty, queue_size=1) for i in Tello_list]
 
 
-pr5152=a_plan_res("51_52_future")
-pr5152.in_num_obj=[board_set[1],board_set[2]]
-pr5152.in_num=[51,52]
-pr5152.ang_x=6
+# pr5152=a_plan_res("51_52_future")
+# pr5152.in_num_obj=[board_set[1],board_set[2]]
+# pr5152.in_num=[51,52]
+# pr5152.ang_x=6
+
+pr51=a_plan_res("51_future")
+pr51.in_num_obj=[board_set[1]]
+pr51.in_num=[51]
+pr51.ang_x=2
+
 
 pr52=a_plan_res("52_future")
 pr52.in_num_obj=[board_set[2]]
 pr52.in_num=[52]
 pr52.ang_x=4
 rate = rospy.Rate(30)
-p5152_pub=rospy.Publisher('ref_bef', Twist, queue_size=1)
+p5152_pub=rospy.Publisher('/drone1/ref_befNN', Twist, queue_size=1)
+ref_raw_pub_list = [rospy.Publisher("drone"+str(i)+'/ref_bef', Twist, queue_size=1) for i in Tello_list]
+
 
 #  51+52=110(2)=6(10)
 #  52   =100(2)=4(10)
@@ -141,43 +151,68 @@ m=0
 times=0
 while not rospy.is_shutdown():
     if is_takeoff:
-        print(t)
+        # print(t)
         if m==0:
-            if t>=5:
+            if t>5:
                 m=1
                 t=float(0)
             else:
                 t=t+Ts
-                ref_pub_msg=Twist()
-                ref_pub_msg.linear.x = 1.5
-                ref_pub_msg.linear.y = 0
-                ref_pub_msg.linear.z = 1.5
-                ref_pub_msg.angular.z = 90.0/57.296
-                p5152_pub.publish(ref_pub_msg)
+
+                d1_ref_msg=Twist()
+                d1_ref_msg.linear.x = 3.3
+                d1_ref_msg.linear.y = -1
+                d1_ref_msg.linear.z = 1.2
+                d1_ref_msg.angular.z = 90.0/57.296
+                ref_raw_pub_list[0].publish(d1_ref_msg)
+
+                d2_ref_msg=Twist()
+                d2_ref_msg.linear.x = 3.3
+                d2_ref_msg.linear.y = 1
+                d2_ref_msg.linear.z = 1.2
+                d2_ref_msg.angular.z = 90.0/57.296
+                ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==1:
-            if t>=5:
-                m=2
+            if t>=60:
+                m=100
                 t=float(0)
             else:
                 t=t+Ts
-                ref_pub_msg=Twist()
-                ref_pub_msg.linear.x = 2
-                ref_pub_msg.linear.y = 0
-                ref_pub_msg.linear.z = 1.5
-                ref_pub_msg.angular.z = 90.0/57.296
-                p5152_pub.publish(ref_pub_msg)
+
+                # d1_ref_msg=Twist()
+                # d1_ref_msg.linear.x = 2+t/5.0
+                # d1_ref_msg.linear.y = -1+t/5.0
+                # d1_ref_msg.linear.z = 1.2
+                # d1_ref_msg.angular.z = 90.0/57.296
+
+                ref_raw_pub_list[0].publish(pr52.res)
+
+                # d2_ref_msg=Twist()
+                # d2_ref_msg.linear.x = 3.3
+                # d2_ref_msg.linear.y = 1
+                # d2_ref_msg.linear.z = 1.2
+                # d2_ref_msg.angular.z = 90.0/57.296
+                ref_raw_pub_list[1].publish(pr51.res)
         if m==2:
-            if t>=5:
-                m=3
+            if t>=10:
+                m=100
                 t=float(0)
             else:
                 t=t+Ts
-                ref_pub_msg=Twist()
-                ref_pub_msg.linear.x = 2.5
-                ref_pub_msg.linear.y = 0
-                ref_pub_msg.linear.z = 1.5
-                ref_pub_msg.angular.z = 90.0/57.296
-                p5152_pub.publish(ref_pub_msg)
+
+                d1_ref_msg=Twist()
+                d1_ref_msg.linear.x = 4
+                d1_ref_msg.linear.y = 1
+                d1_ref_msg.linear.z = 1.2
+                d1_ref_msg.angular.z = 90.0/57.296
+                ref_raw_pub_list[0].publish(d1_ref_msg)
+
+                d2_ref_msg=Twist()
+                d2_ref_msg.linear.x = 4
+                d2_ref_msg.linear.y = -1
+                d2_ref_msg.linear.z = 1.2
+                d2_ref_msg.angular.z = 90.0/57.296
+                ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==3:
             if t>=5:
                 m=4

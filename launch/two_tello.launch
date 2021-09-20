@@ -7,6 +7,10 @@
         <node pkg="mtma" type="findBoxWCannyOnLine.py" name="findBoxOnLine" output="screen"/>
         <node pkg="mtma" type="control_val_node_kf.py" name="control_val_node_kf" output="screen"/>
         <node pkg="mtma" type="kf.py" name="kf" output="screen"/>
+        <param name="x0" value="2"/>
+        <param name="y0" value="-1"/>
+        <param name="z0" value="0"/>
+        <param name="th0" value="1.5708"/>
         <node pkg="mtma" type="ref_filter.py" name="ref_filter" output="screen"/>
         <node pkg="mtma" type="merge_box_node.py" name="merge_box_node" output="screen"/>
         <node pkg="mtma" type="imuint.py" name="imuint" output="screen"/>
@@ -22,6 +26,11 @@
         <node pkg="mtma" type="findBoxWCannyOnLine.py" name="findBoxOnLine" output="screen"/>
         <node pkg="mtma" type="control_val_node_kf.py" name="control_val_node_kf" output="screen"/>
         <node pkg="mtma" type="kf.py" name="kf" output="screen"/>
+        <param name="x0" value="2"/>
+        <param name="y0" value="1"/>
+        <param name="z0" value="0"/>
+        <param name="th0" value="1.5708"/>
+
         <node pkg="mtma" type="ref_filter.py" name="ref_filter" output="screen"/>
         <node pkg="mtma" type="merge_box_node.py" name="merge_box_node" output="screen"/>
         <node pkg="mtma" type="imuint.py" name="imuint" output="screen"/>

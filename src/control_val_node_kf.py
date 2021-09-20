@@ -17,14 +17,16 @@ box_ang=90
 box_newTime=time.time()
 is_takeoff=1
 l_flag=0
+my_data=Twist()
 def cb_box(data):
-    global box_lock,box_x,box_y,box_z,l_flag,box_ang
+    global box_lock,box_x,box_y,box_z,l_flag,box_ang,my_data
     box_lock.acquire()
     box_x=data.linear.x
     box_y=data.linear.y
     box_z=data.linear.z
     box_ang=data.angular.z
     box_lock.release()
+    my_data=data
 
 def cb_takeoff(data):
     global is_takeoff
@@ -44,6 +46,30 @@ def cb_ref(data):
     ang_d=data.angular.z
     ref_lock.release()
 
+def F_rep(pos,occ_pos):
+    d=0
+    d=d+(pos.linear.x-occ_pos.linear.x)**2
+    d=d+(pos.linear.y-occ_pos.linear.y)**2
+    d=d+((pos.linear.z-occ_pos.linear.z))**2
+    d=np.sqrt(d)
+    # print(pos,occ_pos)
+    if d>1:
+        # print(d)
+        return Twist()
+    gain=0.0*(1.0/d-1)/d/d
+    ret=Twist()
+    ret.linear.x=(pos.linear.x-occ_pos.linear.x)*gain
+    ret.linear.y=(pos.linear.y-occ_pos.linear.y)*gain
+    ret.linear.z=(pos.linear.z-occ_pos.linear.z)*gain
+    return ret
+
+def dis(pos,occ_pos):
+    d=0
+    d=d+(pos.linear.x-occ_pos.linear.x)**2
+    d=d+(pos.linear.y-occ_pos.linear.y)**2
+    d=d+(pos.linear.z-occ_pos.linear.z)**2
+    d=np.sqrt(d)
+    return d
 
 isSIM=rospy.get_param('isSIM')
 
@@ -53,11 +79,23 @@ else:
     is_takeoff=0
 
 
+class for_occ:
+    def __init__(self,i):
+        self.sub=rospy.Subscriber("/drone"+str(i)+'/from_kf', Twist, self.cb)
+        self.d=Twist()
+    def cb(self,data):
+        self.d=data
+
+
+
 
 rospy.init_node('control_val_node_kf', anonymous=True)
 box_sub = rospy.Subscriber('from_kf', Twist, cb_box)
+
 cmd_val_pub = rospy.Publisher('tello/cmd_vel', Twist, queue_size=1)
+occ_vel_pub = rospy.Publisher('occ_vel', Twist, queue_size=1)
 v_cmd_pub = rospy.Publisher('v_cmd', Twist, queue_size=1)
+v_cmd2_pub = rospy.Publisher('v_cmd2', Twist, queue_size=1)
 x_pid_pub = rospy.Publisher('x_pid', PidState, queue_size=1)
 y_pid_pub = rospy.Publisher('y_pid', PidState, queue_size=1)
 z_pid_pub = rospy.Publisher('z_pid', PidState, queue_size=1)
@@ -65,6 +103,7 @@ ang_pid_pub = rospy.Publisher('th_pid', PidState, queue_size=1)
 takeoff_sub = rospy.Subscriber('tello/takeoff', Empty, cb_takeoff)
 ref_sub = rospy.Subscriber('ref', Twist, cb_ref)
 land_sub = rospy.Subscriber('tello/land', Empty, cb_land)
+dis_pub = rospy.Publisher('dis', Twist, queue_size=1)
 rate = rospy.Rate(30)
 
 box_lock=threading.Lock()
@@ -90,6 +129,18 @@ err_x_dif_filter=filter_lib.meanFilter(1)
 err_y_dif_filter=filter_lib.meanFilter(1)
 err_z_dif_filter=filter_lib.meanFilter(1)
 err_ang_dif_filter=filter_lib.meanFilter(1)
+
+
+my_namespace=rospy.get_namespace()
+
+print("-------------------",my_namespace)
+
+if my_namespace=="/drone1/":
+    occ_list=[1]
+elif my_namespace=="/drone2/":
+    occ_list=[0]
+Tello_list=[1,2]
+for_occ_list=[for_occ(i) for i in Tello_list]
 
 while  not rospy.is_shutdown():
     if is_takeoff:
@@ -216,6 +267,61 @@ while  not rospy.is_shutdown():
         ang_pid.d_term=kd
         ang_pid.output=cmd_ang
 
+
+
+        LIM=1
+        # ==========world frame===============
+        v_cmd_msg=Twist()
+
+        v_cmd_msg.linear.x = cmd_x
+        v_cmd_msg.linear.y = cmd_y
+        v_cmd_msg.linear.z = cmd_z
+        v_cmd_msg.angular.z = -cmd_ang
+        if abs(v_cmd_msg.linear.x)>LIM:
+            v_cmd_msg.linear.x=v_cmd_msg.linear.x/abs(v_cmd_msg.linear.x)*LIM
+        if abs(v_cmd_msg.linear.y)>LIM:
+            v_cmd_msg.linear.y=v_cmd_msg.linear.y/abs(v_cmd_msg.linear.y)*LIM
+        if abs(v_cmd_msg.linear.z)>LIM:
+            v_cmd_msg.linear.z=v_cmd_msg.linear.z/abs(v_cmd_msg.linear.z)*LIM
+        if abs(v_cmd_msg.angular.z)>LIM:
+            v_cmd_msg.angular.z=v_cmd_msg.angular.z/abs(v_cmd_msg.angular.z)*LIM
+        v_cmd_pub.publish(v_cmd_msg)
+
+        # ==========world frame===============
+
+        occ_f=Twist()
+        dd=0
+        for i in occ_list:
+            f=F_rep(my_data,for_occ_list[i].d)
+            occ_f.linear.x=occ_f.linear.x+f.linear.x
+            occ_f.linear.y=occ_f.linear.y+f.linear.y
+            occ_f.linear.z=occ_f.linear.z+f.linear.z
+            dd=dis(my_data,for_occ_list[i].d)
+            d=Twist()
+            d.linear.x=dd
+            dis_pub.publish(d)
+
+
+
+
+        occ_vel_pub.publish(occ_f)
+        cmd_x=cmd_x+occ_f.linear.x
+        cmd_y=cmd_y+occ_f.linear.y
+        cmd_z=cmd_z+occ_f.linear.z
+        # if dd<1.5 and my_namespace=="/drone2/":
+        #     cmd_x=cmd_x*0.15
+        #     cmd_y=cmd_y*0.15
+
+
+        v_cmd2_msg=Twist()
+        v_cmd2_msg.linear.x = cmd_x
+        v_cmd2_msg.linear.y = cmd_y
+        v_cmd2_msg.linear.z = cmd_z
+        v_cmd2_msg.angular.z = -cmd_ang
+        v_cmd2_pub.publish(v_cmd2_msg)
+
+
+        # =======to drone frame===============
         if l_flag==0:
             # cmd_val_pub_msg.linear.x = cmd_y
             # cmd_val_pub_msg.linear.y = -cmd_x
@@ -229,7 +335,7 @@ while  not rospy.is_shutdown():
             cmd_val_pub_msg.angular.z = 0
             cmd_val_pub_msg.angular.z = 0
 
-        LIM=1
+
         if abs(cmd_val_pub_msg.linear.x)>LIM:
             cmd_val_pub_msg.linear.x=cmd_val_pub_msg.linear.x/abs(cmd_val_pub_msg.linear.x)*LIM
         if abs(cmd_val_pub_msg.linear.y)>LIM:
@@ -240,27 +346,11 @@ while  not rospy.is_shutdown():
             cmd_val_pub_msg.angular.z=cmd_val_pub_msg.angular.z/abs(cmd_val_pub_msg.angular.z)*LIM
         
         #print(cmd_val_pub_msg.linear)
-        v_cmd_msg=Twist()
 
-        
-        
-        v_cmd_msg.linear.x = cmd_x
-        v_cmd_msg.linear.y = cmd_y
-        v_cmd_msg.linear.z = cmd_z
-        v_cmd_msg.angular.z = -cmd_ang
-        if abs(v_cmd_msg.linear.x)>LIM:
-            v_cmd_msg.linear.x=v_cmd_msg.linear.x/abs(v_cmd_msg.linear.x)*LIM
-        if abs(cmd_val_pub_msg.linear.y)>LIM:
-            v_cmd_msg.linear.y=v_cmd_msg.linear.y/abs(v_cmd_msg.linear.y)*LIM
-        if abs(v_cmd_msg.linear.z)>LIM:
-            v_cmd_msg.linear.z=v_cmd_msg.linear.z/abs(v_cmd_msg.linear.z)*LIM
-        if abs(cmd_val_pub_msg.angular.z)>LIM:
-            v_cmd_msg.angular.z=v_cmd_msg.angular.z/abs(v_cmd_msg.angular.z)*LIM
-        v_cmd_pub.publish(v_cmd_msg)
         if isSIM==0:
             cmd_val_pub.publish(cmd_val_pub_msg)
 
-
+        # =======to drone frame===============
 
         x_pid_pub.publish(x_pid)
         y_pid_pub.publish(y_pid)

@@ -79,7 +79,10 @@ while 1:
                 aTello_takeoff_list[i].takeoff(0)
                 rospy.loginfo("drone"+str(Tello_list[i])+" finish takeoff!")
 
-            
+        if isSIM==1:
+            for i in range(len(takeoff_pub_list)):
+                takeoff_pub_list[i].publish(Empty())
+                rospy.loginfo("drone"+str(Tello_list[i])+" real takeoff!")
     else:
         rospy.loginfo("land!!!")
         if isSIM==0:
