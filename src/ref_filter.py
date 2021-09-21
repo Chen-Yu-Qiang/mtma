@@ -4,7 +4,7 @@ from geometry_msgs.msg import Twist
 import filter_lib
 
 rospy.init_node('ref_filter_node', anonymous=True)
-ref_pub = rospy.Publisher('ref', Twist, queue_size=1)
+ref_pub = rospy.Publisher('ref_aft', Twist, queue_size=1)
 
 
 f=filter_lib.meanFilter(21)

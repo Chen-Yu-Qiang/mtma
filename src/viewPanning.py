@@ -238,7 +238,7 @@ class viewPanner:
         if d>R:
             # print(d)
             return [0.0,0.0,0.0,0.0]
-        gain=0.3*(1.0/d-1/R)/d/d
+        gain=0.0*(1.0/d-1/R)/d/d
         ret=[0.0,0.0,0.0,0.0]
         ret[0]=(pos[0]-occ_pos[0])*gain
         ret[1]=(pos[1]-occ_pos[1])*gain

@@ -37,14 +37,17 @@ def cb_land(data):
     global is_takeoff
     is_takeoff=0   
 
+my_ref=Twist()
 def cb_ref(data):
-    global ref_lock,x_d,y_d,z_d,ang_d
+    global ref_lock,x_d,y_d,z_d,ang_d,my_ref
     ref_lock.acquire()
     x_d=data.linear.x
     y_d=data.linear.y
     z_d=data.linear.z
     ang_d=data.angular.z
     ref_lock.release()
+    my_ref=data
+
 
 def F_rep(pos,occ_pos):
     d=0
@@ -53,10 +56,11 @@ def F_rep(pos,occ_pos):
     d=d+((pos.linear.z-occ_pos.linear.z))**2
     d=np.sqrt(d)
     # print(pos,occ_pos)
-    if d>1:
+    R=0.8
+    if d>R:
         # print(d)
         return Twist()
-    gain=0.0*(1.0/d-1)/d/d
+    gain=0.5*(1.0/d-1.0/R)/d/d
     ret=Twist()
     ret.linear.x=(pos.linear.x-occ_pos.linear.x)*gain
     ret.linear.y=(pos.linear.y-occ_pos.linear.y)*gain
@@ -81,10 +85,14 @@ else:
 
 class for_occ:
     def __init__(self,i):
-        self.sub=rospy.Subscriber("/drone"+str(i)+'/from_kf', Twist, self.cb)
-        self.d=Twist()
-    def cb(self,data):
-        self.d=data
+        self.sub_now=rospy.Subscriber("/drone"+str(i)+'/from_kf', Twist, self.cb_now)
+        self.sub_ref=rospy.Subscriber("/drone"+str(i)+'/ref', Twist, self.cb_ref)
+        self.d_now=Twist()
+        self.d_ref=Twist()
+    def cb_now(self,data):
+        self.d_now=data
+    def cb_ref(self,data):
+        self.d_ref=data
 
 
 
@@ -101,10 +109,9 @@ y_pid_pub = rospy.Publisher('y_pid', PidState, queue_size=1)
 z_pid_pub = rospy.Publisher('z_pid', PidState, queue_size=1)
 ang_pid_pub = rospy.Publisher('th_pid', PidState, queue_size=1)
 takeoff_sub = rospy.Subscriber('tello/takeoff', Empty, cb_takeoff)
-ref_sub = rospy.Subscriber('ref', Twist, cb_ref)
+ref_sub = rospy.Subscriber('ref_l', Twist, cb_ref)
 land_sub = rospy.Subscriber('tello/land', Empty, cb_land)
-dis_pub = rospy.Publisher('dis', Twist, queue_size=1)
-rate = rospy.Rate(30)
+rate = rospy.Rate(100)
 
 box_lock=threading.Lock()
 ang_lock=threading.Lock()
@@ -140,12 +147,12 @@ if my_namespace=="/drone1/":
 elif my_namespace=="/drone2/":
     occ_list=[0]
 Tello_list=[1,2]
-for_occ_list=[for_occ(i) for i in Tello_list]
+# for_occ_list=[for_occ(i) for i in Tello_list]
 
 while  not rospy.is_shutdown():
     if is_takeoff:
 
-        d_t = 1.0/30
+        d_t = 1.0/100.0
 
         box_lock.acquire()
         x_now = box_x
@@ -289,29 +296,42 @@ while  not rospy.is_shutdown():
 
         # ==========world frame===============
 
-        occ_f=Twist()
-        dd=0
-        for i in occ_list:
-            f=F_rep(my_data,for_occ_list[i].d)
-            occ_f.linear.x=occ_f.linear.x+f.linear.x
-            occ_f.linear.y=occ_f.linear.y+f.linear.y
-            occ_f.linear.z=occ_f.linear.z+f.linear.z
-            dd=dis(my_data,for_occ_list[i].d)
-            d=Twist()
-            d.linear.x=dd
-            dis_pub.publish(d)
+        # occ_f=Twist()
+        # dd=0
+        # for i in occ_list:
+        #     f=F_rep(my_data,for_occ_list[i].d_now)
+        #     occ_f.linear.x=occ_f.linear.x+f.linear.x
+        #     occ_f.linear.y=occ_f.linear.y+f.linear.y
+        #     occ_f.linear.z=occ_f.linear.z+f.linear.z
+        #     dd=dis(my_data,for_occ_list[i].d_now)
+        #     d=Twist()
+        #     d.linear.x=dd
 
 
 
 
-        occ_vel_pub.publish(occ_f)
-        cmd_x=cmd_x+occ_f.linear.x
-        cmd_y=cmd_y+occ_f.linear.y
-        cmd_z=cmd_z+occ_f.linear.z
-        # if dd<1.5 and my_namespace=="/drone2/":
-        #     cmd_x=cmd_x*0.15
-        #     cmd_y=cmd_y*0.15
+        # occ_vel_pub.publish(occ_f)
+        # cmd_x=cmd_x+occ_f.linear.x
+        # cmd_y=cmd_y+occ_f.linear.y
+        # cmd_z=cmd_z+occ_f.linear.z
 
+
+        # for i in occ_list:
+        #     dd=dis(my_ref,for_occ_list[i].d_ref)
+        # gain=1
+        # d0=0.75
+        # d1=1
+        # if dd<d0:
+        #     gain=0
+        # elif dd>d1:
+        #     gain=1
+        # elif dd<d1:
+        #     gain=((dd-d0)/(d1-d0))**3
+
+
+        # cmd_x=cmd_x*gain
+        # cmd_y=cmd_y*gain
+        # cmd_z=cmd_z*gain
 
         v_cmd2_msg=Twist()
         v_cmd2_msg.linear.x = cmd_x
