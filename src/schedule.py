@@ -63,7 +63,7 @@ while not rospy.is_shutdown():
                 d2_ref_msg.angular.z = 90.0/57.296
                 ref_raw_pub_list[1].publish(d2_ref_msg)
         if m==1:
-            if t>=60:
+            if t>=65:
                 m=100
                 t=float(0)
             else:

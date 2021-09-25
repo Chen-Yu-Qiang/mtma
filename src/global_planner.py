@@ -28,9 +28,9 @@ class ros_viewPlanner:
     def set_taskPoint(self,t):
         self.vper.set_taskPoint(t)
 
-    def set_ci(self,_ci):
-        self.ci=_ci
-        self.vper.ci=_ci
+    # def set_ci(self,_ci):
+    #     self.ci=_ci
+    #     self.vper.ci=viewPanning.twist2ci(_ci)
 
     def pub_ci(self,time=100):
         res=viewPanning.ci2twist(self.vper.gant(times=time))
@@ -73,13 +73,52 @@ class target:
 class uav:
     def __init__(self,i):
         self.sub=rospy.Subscriber("/drone"+str(i)+'/from_kf', Twist, self.cb)
+        # self.sub_local_res=rospy.Subscriber("/drone"+str(i)+'/ref_l', Twist, self.opt_ang)
         self.d=None
         self.data=Twist()
         self.i=i
+        self.str_name="drone"+str(i)
+        self.vper=viewPanning.viewPanner_angle()
+        self.vper.myName=self.str_name
+        self.ci=Twist()
+        self.res=Twist()
+        self.ci_pub=rospy.Publisher("/drone"+str(i)+'/ref_plan_ang', Twist, queue_size=1)
+        self.tpk_pub=rospy.Publisher('plan_tpk_'+self.str_name, Float32MultiArray, queue_size=1)
+        self.t=time.time()
+
     def cb(self,data):
         self.d=viewPanning.twist2ci(data)
         self.data=data
         # print(self.i,self.d)
+
+    def set_taskPoint(self,t):
+        self.vper.set_taskPoint(t)
+
+    def set_ci(self,_ci):
+        self.vper.ci=viewPanning.twist2ci(_ci)
+
+    
+    def pub_tpk(self):
+        d=self.vper.get_tpk()
+        dd=Float32MultiArray(data=d)
+        self.tpk_pub.publish(dd)
+
+    # def opt_ang(self,data):
+    #     self.set_ci(data)
+    #     self.t=time.time()
+    #     # if time.time()-self.t>0.1:
+    #     #     data.angular.z=self.res.angular.z
+    #     self.res=viewPanning.ci2twist(self.vper.opt_ang())
+    #     out_msg=Twist()
+    #     out_msg.linear.x=data.linear.x
+    #     out_msg.linear.y=data.linear.y
+    #     out_msg.linear.z=data.linear.z
+    #     # print(self.res.angular.z,data.angular.z)
+    #     out_msg.angular.z=self.res.angular.z
+    #     print(self.t-time.time())
+    #     self.ci_pub.publish(out_msg)
+
+
 
 rospy.init_node('plan_node', anonymous=True)
 
@@ -89,7 +128,7 @@ target_set=[target(i) for i in range(51,60)]
 uav_set=[uav(i) for i in Tello_list]
 ref_raw_pub_list = [rospy.Publisher("drone"+str(i)+'/ref_bef_pre', Twist, queue_size=1) for i in Tello_list]
 plan_res_pub=rospy.Publisher('/plan_res', Float32MultiArray, queue_size=1)
-rate = rospy.Rate(30)
+rate = rospy.Rate(5.0)
 
 rvp_52=ros_viewPlanner("52")
 
@@ -105,12 +144,6 @@ def dis(uav,plan_res):
     return np.sqrt((uav.linear.x-plan_res.linear.x)**2+(uav.linear.y-plan_res.linear.y)**2+(uav.linear.z-plan_res.linear.z)**2)
 
 
-
-ref_board=Twist()
-ref_board.linear.x=0
-ref_board.linear.y=0
-ref_board.linear.z=0.9
-ref_board.angular.z=np.pi*0.5
 MODE=2
 while not rospy.is_shutdown():
 
@@ -141,34 +174,34 @@ while not rospy.is_shutdown():
         rvp_52_f_p.set_taskPoint(taskPoint)
 
         # rvp_51_future.pub_ci_start(20)
-        # rvp_51_future.pub_ci_end()
         # rvp_52_future.pub_ci_start(20)
-        # rvp_52_future.pub_ci_end()
         # rvp_51_f_p.pub_ci_start(20)
-        # rvp_51_f_p.pub_ci_end()
         # rvp_52_f_p.pub_ci_start(20)
+
+        # rvp_51_future.pub_ci_end()
+        # rvp_52_future.pub_ci_end()
+        # rvp_51_f_p.pub_ci_end()
         # rvp_52_f_p.pub_ci_end()
 
         rvp_51_future.pub_ci(20)
-        rvp_51_future.pub_tpk()
-
-
         rvp_52_future.pub_ci(20)
-        rvp_52_future.pub_tpk()
-
         rvp_51_f_p.pub_ci(20)
-        rvp_51_f_p.pub_tpk()
-
-
-
         rvp_52_f_p.pub_ci(20)
+
+
+        rvp_51_future.pub_tpk()
+        rvp_52_future.pub_tpk()
+        rvp_51_f_p.pub_tpk()
         rvp_52_f_p.pub_tpk()
 
 
         rvp_51_f_p.is_Covered=viewPanning.isCovered(viewPanning.twist2ci(rvp_51_f_p.ci),rvp_51_f_p.vper.taskPoint)
         rvp_52_f_p.is_Covered=viewPanning.isCovered(viewPanning.twist2ci(rvp_52_f_p.ci),rvp_52_f_p.vper.taskPoint)
+        rvp_51_f_p.is_Covered=0
+        rvp_52_f_p.is_Covered=0
 
-
+        # rvp_51_f_p.is_Covered=0
+        # rvp_52_f_p.is_Covered=0
 
         # print(time.time()-t)
 
@@ -189,18 +222,33 @@ while not rospy.is_shutdown():
 
 
         if (d51_u1+d52_u2)<(d51_u2+d52_u1):
-            rvp_51_future.vper.set_occ([uav_set[1].d])
-            rvp_52_future.vper.set_occ([uav_set[0].d])
+        #     rvp_51_future.vper.set_occ([uav_set[1].d])
+        #     rvp_52_future.vper.set_occ([uav_set[0].d])
             ref_raw_pub_list[0].publish(t51)
+            taskPoint=viewPanning.twist2taskpoint([target_set[0].data,target_set[0].future])
+            taskPoint=viewPanning.board_Expand(taskPoint)
+            uav_set[0].vper.set_taskPoint(taskPoint)
+
             ref_raw_pub_list[1].publish(t52)
+            taskPoint=viewPanning.twist2taskpoint([target_set[1].data,target_set[1].future])
+            taskPoint=viewPanning.board_Expand(taskPoint)
+            uav_set[1].vper.set_taskPoint(taskPoint)
             # print((d51_u1+d52_u2),(d51_u2+d52_u1),"mode 1")
             MODE=1
 
         else:
-            rvp_51_future.vper.set_occ([uav_set[0].d])
-            rvp_52_future.vper.set_occ([uav_set[1].d])
+            # rvp_51_future.vper.set_occ([uav_set[0].d])
+            # rvp_52_future.vper.set_occ([uav_set[1].d])
             ref_raw_pub_list[0].publish(t52)
+            taskPoint=viewPanning.twist2taskpoint([target_set[1].data,target_set[1].future])
+            taskPoint=viewPanning.board_Expand(taskPoint)
+            uav_set[0].vper.set_taskPoint(taskPoint)
+
             ref_raw_pub_list[1].publish(t51)
+            taskPoint=viewPanning.twist2taskpoint([target_set[0].data,target_set[0].future])
+            taskPoint=viewPanning.board_Expand(taskPoint)
+            uav_set[1].vper.set_taskPoint(taskPoint)
+
             # print((d51_u1+d52_u2),(d51_u2+d52_u1),"mode 2")
             MODE=2
 

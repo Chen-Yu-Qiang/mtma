@@ -109,9 +109,9 @@ y_pid_pub = rospy.Publisher('y_pid', PidState, queue_size=1)
 z_pid_pub = rospy.Publisher('z_pid', PidState, queue_size=1)
 ang_pid_pub = rospy.Publisher('th_pid', PidState, queue_size=1)
 takeoff_sub = rospy.Subscriber('tello/takeoff', Empty, cb_takeoff)
-ref_sub = rospy.Subscriber('ref_l', Twist, cb_ref)
+ref_sub = rospy.Subscriber('ref_plan_ang', Twist, cb_ref)
 land_sub = rospy.Subscriber('tello/land', Empty, cb_land)
-rate = rospy.Rate(100)
+rate = rospy.Rate(50)
 
 box_lock=threading.Lock()
 ang_lock=threading.Lock()
@@ -152,7 +152,7 @@ Tello_list=[1,2]
 while  not rospy.is_shutdown():
     if is_takeoff:
 
-        d_t = 1.0/100.0
+        d_t = 1.0/50.0
 
         box_lock.acquire()
         x_now = box_x
@@ -210,6 +210,9 @@ while  not rospy.is_shutdown():
         kp = 1.5
         ki = 0.3
         kd = 1.8
+        kp = 1
+        ki = 0
+        kd = 0
 
         #if abs(err_x)>0.7:
         #    kp = 10000
@@ -259,7 +262,7 @@ while  not rospy.is_shutdown():
 
 
 
-        kp = 1
+        kp = 5
         ki = 0
         kd = 0
         cmd_ang=kp*err_ang+ki*err_ang_int+kd*err_ang_dif
@@ -290,8 +293,8 @@ while  not rospy.is_shutdown():
             v_cmd_msg.linear.y=v_cmd_msg.linear.y/abs(v_cmd_msg.linear.y)*LIM
         if abs(v_cmd_msg.linear.z)>LIM:
             v_cmd_msg.linear.z=v_cmd_msg.linear.z/abs(v_cmd_msg.linear.z)*LIM
-        if abs(v_cmd_msg.angular.z)>LIM:
-            v_cmd_msg.angular.z=v_cmd_msg.angular.z/abs(v_cmd_msg.angular.z)*LIM
+        if abs(v_cmd_msg.angular.z)>LIM*3:
+            v_cmd_msg.angular.z=v_cmd_msg.angular.z/abs(v_cmd_msg.angular.z)*LIM*3
         v_cmd_pub.publish(v_cmd_msg)
 
         # ==========world frame===============
@@ -362,8 +365,8 @@ while  not rospy.is_shutdown():
             cmd_val_pub_msg.linear.y=cmd_val_pub_msg.linear.y/abs(cmd_val_pub_msg.linear.y)*LIM
         if abs(cmd_val_pub_msg.linear.z)>LIM:
             cmd_val_pub_msg.linear.z=cmd_val_pub_msg.linear.z/abs(cmd_val_pub_msg.linear.z)*LIM
-        if abs(cmd_val_pub_msg.angular.z)>LIM:
-            cmd_val_pub_msg.angular.z=cmd_val_pub_msg.angular.z/abs(cmd_val_pub_msg.angular.z)*LIM
+        # if abs(cmd_val_pub_msg.angular.z)>LIM:
+        #     cmd_val_pub_msg.angular.z=cmd_val_pub_msg.angular.z/abs(cmd_val_pub_msg.angular.z)*LIM
         
         #print(cmd_val_pub_msg.linear)
 

@@ -3,6 +3,8 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Twist
+
+import opt_1d
 ALPHA_H=0.6119
 # ALPHA_H=0.5
 ALPHA_V=0.4845
@@ -49,7 +51,7 @@ def d_v(pk,ci):
     return max(abs(tpk[0]),abs(tpk[1]),abs(tpk[2]),abs(tpk[3]))
 
 def C_s(pk,ci):
-    if d_v(pk,ci)>100:
+    if d_v(pk,ci)>1:
         return 0
     else:
         return np.exp((-1.0)*RHO*d_v(pk,ci))
@@ -205,13 +207,59 @@ def ci2twist(ci):
 
     return a
 
-class viewPanner:
+class viewPanner_angle:
     def __init__(self):
         self.taskPoint=[]
         self.ci=[1.5,0,0,np.pi*0.5]
         self.ci_last=[1.5,0,0,np.pi*0.5]
         self.it_length=1
         self.g_time=5
+        self.occ=[]
+        self.myName=""
+    def set_taskPoint(self,_taskPoint):
+        self.taskPoint=_taskPoint
+    def set_occ(self,_occ):
+        self.occ=_occ
+    
+    def isTooBig(self):
+        d_all=0
+        for i in range(len(self.taskPoint)):
+            d_all=d_all+d_v(self.taskPoint[i],self.ci)
+        if d_all>1.2:
+            return 1
+        return 0
+
+    def con_1d_fun(self,ang):
+        self.ci[3]=ang
+        C_s_sum=0
+        for i in range(len(self.taskPoint)):
+            C_s_sum=C_s_sum+C_s(self.taskPoint[i],self.ci)
+            if C_s(self.taskPoint[i],self.ci)==0:
+                return 0
+        return -C_s_sum
+    def opt_ang(self):
+        aa=self.ci[3]
+        self.ci[3]=opt_1d.gold_div_search(aa-np.pi/2,aa+np.pi/2,self.con_1d_fun)
+        # print(self.ci[3])
+        return self.ci
+        
+
+    def get_tpk(self):
+        tpk_list=[0 for i in range(len(self.taskPoint)*4)]
+        for i in range(len(self.taskPoint)):
+            cpk=worldFrame2CameraFrame(self.taskPoint[i],self.ci)
+            tpk_list[i*4:i*4+4]=ciSpace2tiSpace(cpk)
+            
+        return tpk_list
+
+
+class viewPanner:
+    def __init__(self):
+        self.taskPoint=[]
+        self.ci=[1.5,0,0,np.pi*0.5]
+        self.ci_last=[1.5,0,0,np.pi*0.5]
+        self.it_length=1
+        self.g_time=20
         self.occ=[]
         self.myName=""
     def set_taskPoint(self,_taskPoint):
@@ -561,41 +609,41 @@ if __name__ == '__main__':
 
 
 
-
+    taskPoint=[[-2.278,-1,0.9,0.377]]
 
 
     # for contourf=======================================================
-    # x_list=np.linspace(-1,5,401)
-    # y_list=np.linspace(-2,2,401)
+    x_list=np.linspace(-10,10,401)
+    y_list=np.linspace(-10,10,401)
 
-    # def f(x,y):
-    #     C_s_sum=0
-    #     _ci=[x,y,0,ci[3]]
-    #     for i in range(len(taskPoint)):
-    #         C_s_sum=C_s_sum+C_s(taskPoint[i],_ci)
-    #         # if C_s(taskPoint[i],_ci)==0:
-    #         #     return 0
-    #     return C_s_sum
-
-
-    # Z=[[0 for i in range(len(x_list))]for j in range(len(y_list))]
-    # for i in range(len(x_list)):
-    #      for j in range(len(y_list)):
-    #          Z[j][i]=f(x_list[i],y_list[j])
+    def f(x,y):
+        C_s_sum=0
+        _ci=[x,y,-6.371,1.571]
+        for i in range(len(taskPoint)):
+            C_s_sum=C_s_sum+C_s(taskPoint[i],_ci)
+            # if C_s(taskPoint[i],_ci)==0:
+            #     return 0
+        return C_s_sum
 
 
-    # plt.contourf(x_list, y_list, Z,100,cmap='jet')
-    # plt.colorbar()    
-    # plt.axis([-1,5,-2,2])
+    Z=[[0 for i in range(len(x_list))]for j in range(len(y_list))]
+    for i in range(len(x_list)):
+         for j in range(len(y_list)):
+             Z[j][i]=f(x_list[i],y_list[j])
+
+
+    plt.contourf(x_list, y_list, Z,100,cmap='jet')
+    plt.colorbar()    
+    plt.axis([-10,10,-10,10])
     # plt.scatter(res.linear.x,res.linear.y)
     # [x,xx],[y,yy]=v_y(res.linear.x,res.linear.y,res.angular.z,0.3)
     # plt.plot([x,xx],[y,yy])    
 
-    # for i in range(len(taskPoint)):
-    #     plt.scatter(targetSet[i].linear.x,targetSet[i].linear.y,color=board_color[i])
-    #     [x,xx],[y,yy]=v_y(targetSet[i].linear.x,targetSet[i].linear.y,targetSet[i].angular.z)
-    #     plt.plot([x,xx],[y,yy],color=board_color[i])
+    for i in range(len(taskPoint)):
+        plt.scatter(targetSet[i].linear.x,targetSet[i].linear.y,color=board_color[i])
+        [x,xx],[y,yy]=v_y(targetSet[i].linear.x,targetSet[i].linear.y,targetSet[i].angular.z)
+        plt.plot([x,xx],[y,yy],color=board_color[i])
 
-    # plt.xlabel("X (m)")
-    # plt.ylabel("Y (m)")
-    # plt.show()
+    plt.xlabel("X (m)")
+    plt.ylabel("Y (m)")
+    plt.show()

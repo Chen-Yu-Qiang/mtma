@@ -40,7 +40,7 @@ def F_rep(pos,occ_pos):
     d=0
     d=d+(pos.linear.x-occ_pos.linear.x)**2
     d=d+(pos.linear.y-occ_pos.linear.y)**2
-    d=d+((pos.linear.z-occ_pos.linear.z))**2
+    d=d+((pos.linear.z-occ_pos.linear.z)*2)**2
     d=np.sqrt(d)
     # print(pos,occ_pos)
     R=1.0
@@ -101,7 +101,7 @@ takeoff_sub = rospy.Subscriber('tello/takeoff', Empty, cb_takeoff)
 ref_sub = rospy.Subscriber('ref_aft', Twist, cb_ref)
 land_sub = rospy.Subscriber('tello/land', Empty, cb_land)
 dis_pub = rospy.Publisher('dis', Twist, queue_size=1)
-rate = rospy.Rate(100)
+rate = rospy.Rate(50)
 
 
 my_namespace=rospy.get_namespace()
@@ -116,7 +116,7 @@ Tello_list=[1,2]
 for_occ_list=[for_occ(i) for i in Tello_list]
 
 
-F_occ_filter=filter_lib.meanFilter(1)
+
 while  not rospy.is_shutdown():
     if is_takeoff:
 
@@ -134,21 +134,34 @@ while  not rospy.is_shutdown():
             dd=dis(my_data,for_occ_list[i].d_now)
             d=Twist()
             d.linear.x=dd
-            dd=dis(my_ref,for_occ_list[i].d_ref)
-            d.linear.y=dd
+            dd2=dis(my_ref,for_occ_list[i].d_ref)
+            d.linear.y=dd2
 
         dis_pub.publish(d)
         goalP=F_att(my_data,my_ref)
 
 
 
-        occ_f=F_occ_filter.update(occ_f)
+
         occ_vel_pub.publish(occ_f)
+        
+        UP_B=3
+        LOW_B=0.5
+
+        if dd<UP_B and dd>LOW_B:
+            gain=(dd-LOW_B)/(UP_B-LOW_B)
+            gain=gain**2
+        elif dd>UP_B:
+            gain=1
+        elif dd<LOW_B:
+            gain=0
+        # print(gain)
+
 
         out_msg=Twist()
-        out_msg.linear.x=my_data.linear.x+goalP.linear.x+occ_f.linear.x
-        out_msg.linear.y=my_data.linear.y+goalP.linear.y+occ_f.linear.y
-        out_msg.linear.z=my_data.linear.z+goalP.linear.z+occ_f.linear.z
+        out_msg.linear.x=my_data.linear.x+(goalP.linear.x+occ_f.linear.x)*gain
+        out_msg.linear.y=my_data.linear.y+(goalP.linear.y+occ_f.linear.y)*gain
+        out_msg.linear.z=my_data.linear.z+(goalP.linear.z+occ_f.linear.z)*gain
         out_msg.angular.z=my_ref.angular.z
 
         ref_l_pub.publish(out_msg)
