@@ -62,6 +62,7 @@ class target:
         # constantSpeed ====================================
 
         self.after_filter_pub=rospy.Publisher('target'+str(_i)+"_f", Twist, queue_size=1)
+        self.after_filter_v_pub=rospy.Publisher('target'+str(_i)+"_f_v", Twist, queue_size=1)
         self.filter_future_pub=rospy.Publisher('target'+str(_i)+"_f_future", Twist, queue_size=1)
         self.kf_pmat_pub=rospy.Publisher('kf_pmat_'+str(_i), Twist, queue_size=1)
         self.t=time.time()
@@ -86,6 +87,12 @@ class target:
             self.data.linear.z=self.kf_z.X[0][0]
             self.data.angular.z=self.kf_th.X[0][0]
             self.after_filter_pub.publish(self.data)
+            self.data=Twist()
+            self.data.linear.x=self.kf_x.X[1][0]
+            self.data.linear.y=self.kf_y.X[1][0]
+            self.data.linear.z=self.kf_z.X[1][0]
+            self.data.angular.z=self.kf_th.X[1][0]
+            self.after_filter_v_pub.publish(self.data)
 
 
             self.future=Twist()
