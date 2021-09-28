@@ -83,6 +83,7 @@ class uav:
         self.ci=Twist()
         self.res=Twist()
         self.ci_pub=rospy.Publisher("/drone"+str(i)+'/ref_plan_ang', Twist, queue_size=1)
+        self.tracking_num_pub=rospy.Publisher("/drone"+str(i)+'/tracking_num', Twist, queue_size=1)
         self.tpk_pub=rospy.Publisher('plan_tpk_'+self.str_name, Float32MultiArray, queue_size=1)
         self.t=time.time()
 
@@ -227,12 +228,18 @@ while not rospy.is_shutdown():
             ref_raw_pub_list[0].publish(t51)
             taskPoint=viewPanning.twist2taskpoint([target_set[0].data,target_set[0].future])
             taskPoint=viewPanning.board_Expand(taskPoint)
-            uav_set[0].vper.set_taskPoint(taskPoint)
+            # uav_set[0].vper.set_taskPoint(taskPoint)
+            aa=Twist()
+            aa.linear.x=2
+            uav_set[0].tracking_num_pub.publish(aa)
 
             ref_raw_pub_list[1].publish(t52)
             taskPoint=viewPanning.twist2taskpoint([target_set[1].data,target_set[1].future])
             taskPoint=viewPanning.board_Expand(taskPoint)
-            uav_set[1].vper.set_taskPoint(taskPoint)
+            # uav_set[1].vper.set_taskPoint(taskPoint)
+            aa=Twist()
+            aa.linear.x=4
+            uav_set[1].tracking_num_pub.publish(aa)
             # print((d51_u1+d52_u2),(d51_u2+d52_u1),"mode 1")
             MODE=1
 
@@ -242,12 +249,18 @@ while not rospy.is_shutdown():
             ref_raw_pub_list[0].publish(t52)
             taskPoint=viewPanning.twist2taskpoint([target_set[1].data,target_set[1].future])
             taskPoint=viewPanning.board_Expand(taskPoint)
-            uav_set[0].vper.set_taskPoint(taskPoint)
+            # uav_set[0].vper.set_taskPoint(taskPoint)
+            aa=Twist()
+            aa.linear.x=4
+            uav_set[0].tracking_num_pub.publish(aa)
 
             ref_raw_pub_list[1].publish(t51)
             taskPoint=viewPanning.twist2taskpoint([target_set[0].data,target_set[0].future])
             taskPoint=viewPanning.board_Expand(taskPoint)
             uav_set[1].vper.set_taskPoint(taskPoint)
+            aa=Twist()
+            aa.linear.x=2
+            uav_set[1].tracking_num_pub.publish(aa)
 
             # print((d51_u1+d52_u2),(d51_u2+d52_u1),"mode 2")
             MODE=2

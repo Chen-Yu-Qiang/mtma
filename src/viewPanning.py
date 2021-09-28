@@ -51,7 +51,7 @@ def d_v(pk,ci):
     return max(abs(tpk[0]),abs(tpk[1]),abs(tpk[2]),abs(tpk[3]))
 
 def C_s(pk,ci):
-    if d_v(pk,ci)>1:
+    if d_v(pk,ci)>2:
         return 0
     else:
         return np.exp((-1.0)*RHO*d_v(pk,ci))
