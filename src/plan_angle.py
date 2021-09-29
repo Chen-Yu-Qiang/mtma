@@ -82,12 +82,12 @@ class uav:
 
     def opt_ang(self,data):
         self.set_ci(data)
-        print("bef",self.vper.ci)
+        # print("bef",self.vper.ci)
         self.t=time.time()
         self.pub_tpk_bef()
         self.res=viewPanning.ci2twist(self.vper.opt_ang())
         self.pub_tpk_aft()
-        print("aft",self.vper.ci)
+        # print("aft",self.vper.ci)
         out_msg=Twist()
         out_msg.linear.x=data.linear.x
         out_msg.linear.y=data.linear.y
