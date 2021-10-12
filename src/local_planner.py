@@ -47,7 +47,7 @@ def F_rep(pos,occ_pos):
     if d>R:
         # print(d)
         return Twist()
-    gain=1.0*(1.0/d-1.0/R)/d/d
+    gain=2.0*(1.0/d-1.0/R)/d/d
     ret=Twist()
     ret.linear.x=(pos.linear.x-occ_pos.linear.x)*gain
     ret.linear.y=(pos.linear.y-occ_pos.linear.y)*gain
@@ -138,8 +138,6 @@ while  not rospy.is_shutdown():
         d_t = 1.0/30
         goalP=F_att(my_data,my_ref)
 
-
-
         occ_f=Twist()
         dd=0
         for i in occ_list:
@@ -147,6 +145,8 @@ while  not rospy.is_shutdown():
             # occ_f.linear.x=occ_f.linear.x+f.linear.x
             # occ_f.linear.y=occ_f.linear.y+f.linear.y
             # occ_f.linear.z=occ_f.linear.z+f.linear.z
+
+
             dd=dis(my_data,for_occ_list[i].d_now)
             d=Twist()
             d.linear.x=dd
@@ -154,9 +154,9 @@ while  not rospy.is_shutdown():
             d.linear.y=dd2
 
             inn=0
-            UP_B=10
-            LOW_B=7
-            if dd<10:
+            UP_B=5
+            LOW_B=2
+            if dd<UP_B:
                 vec_occ=vec_a2b(my_data,for_occ_list[i].d_now)
                 inn=inner_prod(goalP,vec_occ)
                 if inn<0:
@@ -188,7 +188,7 @@ while  not rospy.is_shutdown():
         #     gain=0
         # print(gain)
 
-
+        gain=1
         out_msg=Twist()
         # out_msg.linear.x=my_data.linear.x+(goalP.linear.x+occ_f.linear.x)*gain
         # out_msg.linear.y=my_data.linear.y+(goalP.linear.y+occ_f.linear.y)*gain

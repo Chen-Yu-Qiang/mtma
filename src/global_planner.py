@@ -129,7 +129,7 @@ target_set=[target(i) for i in range(51,60)]
 uav_set=[uav(i) for i in Tello_list]
 ref_raw_pub_list = [rospy.Publisher("drone"+str(i)+'/ref_bef_pre', Twist, queue_size=1) for i in Tello_list]
 plan_res_pub=rospy.Publisher('/plan_res', Float32MultiArray, queue_size=1)
-rate = rospy.Rate(5.0)
+rate = rospy.Rate(10.0)
 
 rvp_52=ros_viewPlanner("52")
 
@@ -152,14 +152,14 @@ while not rospy.is_shutdown():
         t=time.time()
 
 
-        taskPoint=viewPanning.twist2taskpoint([target_set[0].data,target_set[0].future])
-        taskPoint=viewPanning.board_Expand(taskPoint)
+        taskPoint=viewPanning.twist2taskpoint([target_set[0].data])
+        # taskPoint=viewPanning.board_Expand(taskPoint)
         # rvp_51_future.vper.set_occ([uav_set[0].d])
         rvp_51_future.set_taskPoint(taskPoint)
 
 
-        taskPoint=viewPanning.twist2taskpoint([target_set[1].data,target_set[1].future])
-        taskPoint=viewPanning.board_Expand(taskPoint)
+        taskPoint=viewPanning.twist2taskpoint([target_set[1].data])
+        # taskPoint=viewPanning.board_Expand(taskPoint)
         # rvp_52_future.vper.set_occ([uav_set[1].d])
         rvp_52_future.set_taskPoint(taskPoint)
 
@@ -183,12 +183,12 @@ while not rospy.is_shutdown():
         # rvp_52_future.pub_ci_end()
         # rvp_51_f_p.pub_ci_end()
         # rvp_52_f_p.pub_ci_end()
-
-        rvp_51_future.pub_ci(20)
-        rvp_52_future.pub_ci(20)
-        rvp_51_f_p.pub_ci(20)
-        rvp_52_f_p.pub_ci(20)
-
+        t=time.time()
+        rvp_51_future.pub_ci(50)
+        rvp_52_future.pub_ci(50)
+        rvp_51_f_p.pub_ci(1)
+        rvp_52_f_p.pub_ci(1)
+        print(time.time()-t)
 
         rvp_51_future.pub_tpk()
         rvp_52_future.pub_tpk()

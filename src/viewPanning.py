@@ -33,13 +33,14 @@ def worldFrame2CameraFrame(pk,ci):
     cpk[0]=t[0]*np.cos(theta)+t[1]*np.sin(theta)
     cpk[1]=(-1.0)*t[2]
     cpk[2]=(-1.0)*t[0]*np.sin(theta)+t[1]*np.cos(theta)
-    cpk[3]=pk[3]-theta
+    cpk[3]=np.arctan2(np.sin(pk[3]-theta),np.cos(pk[3]-theta))
     return cpk
 
 def ciSpace2tiSpace(cpk):
     tpk=[0.0,0.0,0.0,0.0]
-    tpk[0]=cpk[0]/(cpk[2]*np.tan(ALPHA_H))
-    tpk[1]=cpk[1]/(cpk[2]*np.tan(ALPHA_V))
+    tpk[0]=cpk[0]/(max(abs(cpk[2]),0.1)*np.tan(ALPHA_H))
+    tpk[1]=cpk[1]/(max(abs(cpk[2]),0.1)*np.tan(ALPHA_V))
+ 
     tpk[2]=(2.0*cpk[2]-Z_T-Z_B)/(Z_B-Z_T)
     tpk[3]=np.tan(abs(cpk[3])*0.5)/np.tan(THETA_A*0.5)
     return tpk
@@ -48,14 +49,24 @@ def d_v(pk,ci):
     cpk=worldFrame2CameraFrame(pk,ci)
     tpk=ciSpace2tiSpace(cpk)
     # print("max",tpk[0],tpk[1],tpk[2],tpk[3])
-    return max(abs(tpk[0]),abs(tpk[1]),abs(tpk[2]),abs(tpk[3]))
+    if cpk[2]>0:
+        return max(abs(tpk[0]),abs(tpk[1]),abs(tpk[2]),abs(tpk[3]))
+    if cpk[2]<=0:
+        return max(abs(tpk[0]),abs(tpk[1]),abs(tpk[2]),abs(tpk[3]))
 
 def C_s(pk,ci):
-    if d_v(pk,ci)>2:
-        return 0
-    else:
-        return np.exp((-1.0)*RHO*d_v(pk,ci))
 
+    if d_v(pk,ci)>100:
+        return np.exp((-1.0)*RHO*1*1)
+    else:
+        # return (-1.0)*RHO*d_v(pk,ci)*d_v(pk,ci)
+        # return np.exp((-1.0)*RHO*d_v(pk,ci)*d_v(pk,ci))
+        return np.exp((-1.0)*RHO*d_v(pk,ci))
+def C_s_all(_taskpoint,ci):
+    a=0
+    for i in _taskpoint:
+        a=a+C_s(i,ci)
+    return a
 def whatPartition(pk,ci):
     cpk=worldFrame2CameraFrame(pk,ci)
     tpk=ciSpace2tiSpace(cpk)
@@ -76,7 +87,9 @@ def whatPartition(pk,ci):
 
 def Partial_C_s_Partial_ci(pk,ci,partition):
     _Partial_C_s_Partial_ci=[0.0,0.0,0.0,0.0]
-    partial_C_s_partial_dv=(-2.0)*d_v(pk,ci)*RHO*np.exp((-1.0)*RHO*d_v(pk,ci)*d_v(pk,ci))
+    partial_C_s_partial_dv=(-1.0)*RHO*np.exp((-1.0)*RHO*d_v(pk,ci))
+    # partial_C_s_partial_dv=(-2.0)*d_v(pk,ci)*RHO*np.exp((-1.0)*RHO*d_v(pk,ci)*d_v(pk,ci))
+    # partial_C_s_partial_dv=(-2.0)*RHO*d_v(pk,ci)
     cpk=worldFrame2CameraFrame(pk,ci)
     if partition==7:
         if cpk[3]<0:
@@ -87,8 +100,12 @@ def Partial_C_s_Partial_ci(pk,ci,partition):
         _Partial_C_s_Partial_ci=[0,0,0,partial_C_s_partial_dv*Partial_dv_Partial_ci_3]
     else:
         Partial_cpk_Partial_theta=[0.0,0.0,0.0]
-        Partial_cpk_Partial_theta[0]=np.sin(pk[3])*(-1.0)*(pk[0]-ci[0])-np.cos(pk[3])*(pk[2]-ci[2])
-        Partial_cpk_Partial_theta[1]=np.cos(pk[3])*(pk[0]-ci[0])-np.sin(pk[3])*(pk[2]-ci[2])
+        # Partial_cpk_Partial_theta[0]=np.sin(pk[3])*(-1.0)*(pk[0]-ci[0])-np.cos(pk[3])*(pk[2]-ci[2])
+        # Partial_cpk_Partial_theta[1]=np.cos(pk[3])*(pk[0]-ci[0])-np.sin(pk[3])*(pk[2]-ci[2])
+        # Partial_cpk_Partial_theta[0]=np.sin(pk[3])*(-1.0)*(pk[0]-ci[0])+np.cos(pk[3])*(pk[1]-ci[1])
+        # Partial_cpk_Partial_theta[1]=np.cos(pk[3])*(pk[0]-ci[0])*(-1.0)-np.sin(pk[3])*(pk[1]-ci[1])
+        Partial_cpk_Partial_theta[0]=np.sin(ci[3])*(-1.0)*(pk[0]-ci[0])+np.cos(ci[3])*(pk[1]-ci[1])
+        Partial_cpk_Partial_theta[1]=np.cos(ci[3])*(pk[0]-ci[0])*(-1.0)-np.sin(ci[3])*(pk[1]-ci[1])
         # Partial_cpk_Partial_ci = [-R^T , Partial_cpk_Partial_theta]_{3*4}
 
         Partial_dv_Partial_cpk=[0.0,0.0,0.0]
@@ -118,8 +135,10 @@ def Partial_C_s_Partial_ci(pk,ci,partition):
             Partial_dv_Partial_cpk[2]=(-2.0)/(Z_B-Z_T)
         
         Partial_dv_Partial_ci=[0.0,0.0,0.0,0.0]
-        Partial_dv_Partial_ci[0]=Partial_dv_Partial_cpk[0]*(-np.cos(pk[3]))+Partial_dv_Partial_cpk[2]*(np.sin(pk[3]))
-        Partial_dv_Partial_ci[1]=Partial_dv_Partial_cpk[0]*(-np.sin(pk[3]))-Partial_dv_Partial_cpk[2]*(np.cos(pk[3]))
+        # Partial_dv_Partial_ci[0]=Partial_dv_Partial_cpk[0]*(-np.cos(pk[3]))+Partial_dv_Partial_cpk[2]*(np.sin(pk[3]))
+        # Partial_dv_Partial_ci[1]=Partial_dv_Partial_cpk[0]*(-np.sin(pk[3]))-Partial_dv_Partial_cpk[2]*(np.cos(pk[3]))
+        Partial_dv_Partial_ci[0]=Partial_dv_Partial_cpk[0]*(-np.cos(ci[3]))+Partial_dv_Partial_cpk[2]*(np.sin(ci[3]))
+        Partial_dv_Partial_ci[1]=Partial_dv_Partial_cpk[0]*(-np.sin(ci[3]))-Partial_dv_Partial_cpk[2]*(np.cos(ci[3]))
         Partial_dv_Partial_ci[2]=Partial_dv_Partial_cpk[1]
         Partial_dv_Partial_ci[3]=Partial_dv_Partial_cpk[0]*Partial_cpk_Partial_theta[0]+Partial_dv_Partial_cpk[1]*Partial_cpk_Partial_theta[1]
 
@@ -150,6 +169,7 @@ def mut_point(ci,taskPoint):
     all_delta_ci=[0.0,0.0,0.0,0.0]
     for i in range(len(taskPoint)):
         partition=whatPartition(taskPoint[i],ci)
+        
         # print(str(i),partition)
         delta=Partial_C_s_Partial_ci(taskPoint[i],ci,partition)
 
@@ -183,7 +203,8 @@ def VVP(ci_list,pk_list):
                 min_dis=ci_pk_dis[i][k]
         Vi[min_i].append(pk_list[k])
     return Vi
-                
+
+
 def twist2taskpoint(twist_list):
     taskPoint=[[0.0,0.0,0.0,0.0] for i in range(len(twist_list))]
     for i in range(len(twist_list)):
@@ -262,6 +283,9 @@ class viewPanner:
         self.g_time=20
         self.occ=[]
         self.myName=""
+        self.vt=[0,0,0,0]
+        self.bata=0.9
+        self.esp=1
     def set_taskPoint(self,_taskPoint):
         self.taskPoint=_taskPoint
     def set_occ(self,_occ):
@@ -304,6 +328,31 @@ class viewPanner:
         # print(self.myName,F)
         return F
 
+    def one_it_momentum(self):
+        delta_ci=mut_point(self.ci,self.taskPoint)
+        for i in range(4):
+            self.vt[i]=self.vt[i]*self.bata+self.it_length*delta_ci[i]
+            if self.vt[i]>1:
+                self.vt[i]=1
+            elif self.vt[i]<-1:
+                self.vt[i]=-1
+            self.ci[i]=self.ci[i]+self.vt[i]
+        
+        return self.ci      
+    def opt_fun(self,ci):
+        return -C_s_all(self.taskPoint,ci)
+
+    def one_it_steepest(self,esp):
+        delta_ci=mut_point(self.ci,self.taskPoint)
+        a=[0,0,0,0]
+        b=[0,0,0,0]
+        rate=[5,5,5,0.05]
+        for i in range(4):
+            a[i]=self.ci[i]#-self.it_length*rate[i]*delta_ci[i]
+            b[i]=self.ci[i]+self.it_length*rate[i]*delta_ci[i]
+        self.ci=opt_1d.gold_div_search_vet(a,b,self.opt_fun,esp)
+        return self.ci  
+
 
     def one_it(self):
         delta_ci=mut_point(self.ci,self.taskPoint)
@@ -312,19 +361,21 @@ class viewPanner:
         self.ci[0]=self.ci[0]+self.it_length*(delta_ci[0]+delta_F[0])
         self.ci[1]=self.ci[1]+self.it_length*(delta_ci[1]+delta_F[1])
         self.ci[2]=self.ci[2]+self.it_length*(delta_ci[2]+delta_F[2])
-        self.ci[3]=self.ci[3]+self.it_length*0.1*delta_ci[3]
+        self.ci[3]=self.ci[3]+self.it_length*delta_ci[3]
         return self.ci
     def gant(self,times=100,dec=0.9):
+        self.esp=1
         self.it_length=1
         if self.g_time>0:
             for i in range(times*5):
-                self.one_it()
+                self.one_it_steepest(self.esp)
                 self.it_length=self.it_length*dec
             self.g_time=self.g_time-1
             # print(self.g_time)
         else:
             for i in range(times):
-                self.one_it()
+                self.one_it_steepest(self.esp)
+                self.esp=self.esp*0.9
                 self.it_length=self.it_length*dec
         
         
@@ -334,6 +385,26 @@ class viewPanner:
         self.ci_last[2]=self.ci[2]
         self.ci_last[3]=self.ci[3]
         return self.ci
+    # def gant(self,times=100,dec=0.9):
+    #     self.it_length=1
+    #     if self.g_time>0:
+    #         for i in range(times*5):
+    #             self.one_it()
+    #             self.it_length=self.it_length*dec
+    #         self.g_time=self.g_time-1
+    #         # print(self.g_time)
+    #     else:
+    #         for i in range(times):
+    #             self.one_it()
+    #             self.it_length=self.it_length*dec
+        
+        
+    #     # print(self.myName,self.ci_last[0]-self.ci[0],self.ci_last[1]-self.ci[1],self.ci_last[2]-self.ci[2],self.ci_last[3]-self.ci[3])
+    #     self.ci_last[0]=self.ci[0]
+    #     self.ci_last[1]=self.ci[1]
+    #     self.ci_last[2]=self.ci[2]
+    #     self.ci_last[3]=self.ci[3]
+    #     return self.ci
 
     def get_tpk(self):
         tpk_list=[0 for i in range(len(self.taskPoint)*4)]
@@ -469,7 +540,7 @@ if __name__ == '__main__':
 
     taskPoint[0]=[1.0,0.5,0.9,np.pi/2]
     taskPoint[1]=[1.0,0.5,0.9,np.pi/2]
-    plot_contourf(taskPoint)
+    # plot_contourf(taskPoint)
     
 
     print(taskPoint)
@@ -609,16 +680,58 @@ if __name__ == '__main__':
 
 
 
-    taskPoint=[[-2.278,-1,0.9,0.377]]
+    # taskPoint=[[-2.278,-1,0.9,0.377]]
+
+
+    # # for contourf=======================================================
+    # x_list=np.linspace(-10,10,401)
+    # y_list=np.linspace(-10,10,401)
+
+    # def f(x,y):
+    #     C_s_sum=0
+    #     _ci=[x,y,-6.371,1.571]
+    #     for i in range(len(taskPoint)):
+    #         C_s_sum=C_s_sum+C_s(taskPoint[i],_ci)
+    #         # if C_s(taskPoint[i],_ci)==0:
+    #         #     return 0
+    #     return C_s_sum
+
+
+    # Z=[[0 for i in range(len(x_list))]for j in range(len(y_list))]
+    # for i in range(len(x_list)):
+    #      for j in range(len(y_list)):
+    #          Z[j][i]=f(x_list[i],y_list[j])
+
+
+    # plt.contourf(x_list, y_list, Z,100,cmap='jet')
+    # plt.colorbar()    
+    # plt.axis([-10,10,-10,10])
+    # # plt.scatter(res.linear.x,res.linear.y)
+    # # [x,xx],[y,yy]=v_y(res.linear.x,res.linear.y,res.angular.z,0.3)
+    # # plt.plot([x,xx],[y,yy])    
+
+    # for i in range(len(taskPoint)):
+    #     plt.scatter(targetSet[i].linear.x,targetSet[i].linear.y,color=board_color[i])
+    #     [x,xx],[y,yy]=v_y(targetSet[i].linear.x,targetSet[i].linear.y,targetSet[i].angular.z)
+    #     plt.plot([x,xx],[y,yy],color=board_color[i])
+
+    # plt.xlabel("X (m)")
+    # plt.ylabel("Y (m)")
+    # plt.show()
+
+
+    # 1005
+
+    taskPoint=[[0.0,0.0,0.9,0]]
 
 
     # for contourf=======================================================
-    x_list=np.linspace(-10,10,401)
-    y_list=np.linspace(-10,10,401)
+    x_list=np.linspace(-5,5,401)
+    y_list=np.linspace(-5,5,401)
 
     def f(x,y):
         C_s_sum=0
-        _ci=[x,y,-6.371,1.571]
+        _ci=[x,y,0.9,0]
         for i in range(len(taskPoint)):
             C_s_sum=C_s_sum+C_s(taskPoint[i],_ci)
             # if C_s(taskPoint[i],_ci)==0:
@@ -634,16 +747,31 @@ if __name__ == '__main__':
 
     plt.contourf(x_list, y_list, Z,100,cmap='jet')
     plt.colorbar()    
-    plt.axis([-10,10,-10,10])
+    plt.axis([-5,5,-5,5])
     # plt.scatter(res.linear.x,res.linear.y)
     # [x,xx],[y,yy]=v_y(res.linear.x,res.linear.y,res.angular.z,0.3)
     # plt.plot([x,xx],[y,yy])    
 
     for i in range(len(taskPoint)):
-        plt.scatter(targetSet[i].linear.x,targetSet[i].linear.y,color=board_color[i])
-        [x,xx],[y,yy]=v_y(targetSet[i].linear.x,targetSet[i].linear.y,targetSet[i].angular.z)
+        plt.scatter(taskPoint[i][0],taskPoint[i][1],color=board_color[i])
+        [x,xx],[y,yy]=v_y(taskPoint[i][0],taskPoint[i][1],taskPoint[i][3])
         plt.plot([x,xx],[y,yy],color=board_color[i])
+    
+    
+    vp=viewPanner()
+    vp.set_taskPoint(taskPoint)
+    vp.ci=[1,1,0,0]
 
+    vp.it_length=1
     plt.xlabel("X (m)")
     plt.ylabel("Y (m)")
+    for i in range(100):
+        vp.one_it()
+        if i%10==0:
+            plt.scatter(vp.ci[0],vp.ci[1],color=board_color[1])
+            [x,xx],[y,yy]=v_y(vp.ci[0],vp.ci[1],vp.ci[3],0.5)
+            plt.plot([x,xx],[y,yy],color=board_color[1])
+        print(vp.ci)
+
+
     plt.show()
